@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CT Wiring Trainer - Konva</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    h2 {
+      margin: 10px;
+    }
+    #container {
+      border: 1px solid #ccc;
+      margin: 0 10px;
+      flex: 1;
+    }
+    #controls {
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    #status {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔌 CT → 1-Phase Meter Wiring Trainer (Konva.js)</h2>
+
+  <div id="container"></div>
+
+  <div id="controls">
+    <div>
+      <button id="resetBtn">🔄 Reset Connections</button>
+      <button id="checkBtn">✅ Check Wiring</button>
+    </div>
+    <div id="status">Click a terminal, then another terminal to draw a wire.</div>
+  </div>
+
+  <!-- Konva.js CDN -->
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <!-- App logic -->
+  <script src="script.js"></script>
+</body>
+</html>
