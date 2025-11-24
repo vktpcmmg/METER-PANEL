@@ -1,7 +1,8 @@
 // CT → 1-Phase Meter Wiring Trainer using Konva.js
 
+// Basic stage setup
 const containerDiv = document.getElementById("container");
-const width = containerDiv.clientWidth;
+const width = containerDiv.clientWidth || 800;
 const height = containerDiv.clientHeight || 400;
 
 const stage = new Konva.Stage({
@@ -13,20 +14,25 @@ const stage = new Konva.Stage({
 const layer = new Konva.Layer();
 stage.add(layer);
 
+// Terminal names
 const CT_TERMINALS = ["S1", "S2"];
 const METER_TERMINALS = ["M1", "L1"];
 
-const terminalNodes = {};
-let connections = [];
+// We will store the CIRCLE shape for each terminal
+const terminalNodes = {}; // name -> circle
+let connections = [];     // { ct, meter, line }
 let meterToCtMap = { M1: null, L1: null };
 let selectedTerminal = null;
 
-function createTerminal(name, x, y, group) {
+// -----------------------------
+// Create a terminal (circle + label)
+// -----------------------------
+function createTerminal(name, x, y, groupType) {
   const circle = new Konva.Circle({
     x: x,
     y: y,
     radius: 15,
-    fill: group === "CT" ? "#e0f7fa" : "#e8f5e9",
+    fill: groupType === "CT" ? "#e0f7fa" : "#e8f5e9",
     stroke: "#000",
     strokeWidth: 1,
   });
@@ -40,21 +46,19 @@ function createTerminal(name, x, y, group) {
     fill: "#000",
   });
 
-  const groupNode = new Konva.Group({
-    x: 0,
-    y: 0,
-  });
+  const group = new Konva.Group();
+  group.add(circle);
+  group.add(label);
 
-  groupNode.add(circle);
-  groupNode.add(label);
-  groupNode.name(name);
-  groupNode.on("click", () => onTerminalClick(name));
+  group.on("click", () => onTerminalClick(name));
 
-  layer.add(groupNode);
-  terminalNodes[name] = groupNode;
+  layer.add(group);
+
+  // IMPORTANT: store the circle (for correct positions)
+  terminalNodes[name] = circle;
 }
 
-// Layout
+// Layout: CT on left, Meter on right
 createTerminal("S1", width * 0.25, height * 0.3, "CT");
 createTerminal("S2", width * 0.25, height * 0.7, "CT");
 createTerminal("M1", width * 0.75, height * 0.3, "METER");
@@ -62,9 +66,13 @@ createTerminal("L1", width * 0.75, height * 0.7, "METER");
 
 layer.draw();
 
+// -----------------------------
+// Handle terminal click
+// -----------------------------
 function onTerminalClick(name) {
   const statusDiv = document.getElementById("status");
 
+  // First click: select terminal
   if (!selectedTerminal) {
     selectedTerminal = name;
     highlightTerminal(name, true);
@@ -73,6 +81,7 @@ function onTerminalClick(name) {
     return;
   }
 
+  // Second click: connect
   const from = selectedTerminal;
   const to = name;
 
@@ -90,8 +99,10 @@ function onTerminalClick(name) {
   const isMeterFrom = METER_TERMINALS.includes(from);
   const isMeterTo = METER_TERMINALS.includes(to);
 
+  // Must be CT ↔ Meter, not CT↔CT or Meter↔Meter
   if ((isCtFrom && isCtTo) || (isMeterFrom && isMeterTo)) {
-    statusDiv.textContent = "Connect a CT terminal to a Meter terminal (S1/S2 ↔ M1/L1).";
+    statusDiv.textContent =
+      "Connect a CT terminal to a Meter terminal (S1/S2 ↔ M1/L1).";
     statusDiv.style.color = "red";
     return;
   }
@@ -110,8 +121,11 @@ function onTerminalClick(name) {
   statusDiv.style.color = "black";
 }
 
+// -----------------------------
+// Draw the wire (connection)
+// -----------------------------
 function drawConnection(ctTerminal, meterTerminal) {
-  // Remove previous connection for this meter terminal
+  // Remove any old wire from this meter terminal
   connections = connections.filter((conn) => {
     if (conn.meter === meterTerminal) {
       conn.line.destroy();
@@ -120,12 +134,12 @@ function drawConnection(ctTerminal, meterTerminal) {
     return true;
   });
 
-  const fromNode = terminalNodes[ctTerminal];
-  const toNode = terminalNodes[meterTerminal];
+  const fromCircle = terminalNodes[ctTerminal];
+  const toCircle = terminalNodes[meterTerminal];
 
-  // 🔹 Use absolute position instead of local position()
-  const fromPos = fromNode.getAbsolutePosition();
-  const toPos = toNode.getAbsolutePosition();
+  // ✅ Get actual circle center positions
+  const fromPos = fromCircle.getAbsolutePosition();
+  const toPos = toCircle.getAbsolutePosition();
 
   const line = new Konva.Line({
     points: [fromPos.x, fromPos.y, toPos.x, toPos.y],
@@ -134,17 +148,18 @@ function drawConnection(ctTerminal, meterTerminal) {
   });
 
   layer.add(line);
-  layer.moveToBottom(line);
+  line.moveToBottom(); // keep wires behind terminals
   layer.draw();
 
   connections.push({ ct: ctTerminal, meter: meterTerminal, line });
   meterToCtMap[meterTerminal] = ctTerminal;
 }
 
+// -----------------------------
+// Highlight terminal when selected
+// -----------------------------
 function highlightTerminal(name, on) {
-  const node = terminalNodes[name];
-  if (!node) return;
-  const circle = node.findOne("Circle");
+  const circle = terminalNodes[name];
   if (!circle) return;
 
   if (on) {
@@ -157,12 +172,16 @@ function highlightTerminal(name, on) {
   layer.draw();
 }
 
+// -----------------------------
+// Reset all connections
+// -----------------------------
 function resetConnections() {
   connections.forEach((conn) => conn.line.destroy());
   connections = [];
   meterToCtMap.M1 = null;
   meterToCtMap.L1 = null;
   selectedTerminal = null;
+
   Object.keys(terminalNodes).forEach((name) => highlightTerminal(name, false));
   layer.draw();
 
@@ -172,6 +191,9 @@ function resetConnections() {
   statusDiv.style.color = "black";
 }
 
+// -----------------------------
+// Check wiring logic
+// -----------------------------
 function checkWiring() {
   const statusDiv = document.getElementById("status");
   const m1 = meterToCtMap.M1;
@@ -185,8 +207,7 @@ function checkWiring() {
   }
 
   if (m1 === "S1" && l1 === "S2") {
-    statusDiv.textContent =
-      "✅ Correct polarity — S1 → M1 and S2 → L1.";
+    statusDiv.textContent = "✅ Correct polarity — S1 → M1 and S2 → L1.";
     statusDiv.style.color = "green";
     return;
   }
@@ -198,9 +219,13 @@ function checkWiring() {
     return;
   }
 
-  statusDiv.textContent = "❌ Fault wiring — CT terminals connected incorrectly.";
+  statusDiv.textContent =
+    "❌ Fault wiring — CT terminals connected incorrectly.";
   statusDiv.style.color = "red";
 }
 
+// -----------------------------
+// Button handlers
+// -----------------------------
 document.getElementById("resetBtn").addEventListener("click", resetConnections);
 document.getElementById("checkBtn").addEventListener("click", checkWiring);
