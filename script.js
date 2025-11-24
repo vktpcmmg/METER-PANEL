@@ -111,6 +111,7 @@ function onTerminalClick(name) {
 }
 
 function drawConnection(ctTerminal, meterTerminal) {
+  // Remove previous connection for this meter terminal
   connections = connections.filter((conn) => {
     if (conn.meter === meterTerminal) {
       conn.line.destroy();
@@ -121,8 +122,10 @@ function drawConnection(ctTerminal, meterTerminal) {
 
   const fromNode = terminalNodes[ctTerminal];
   const toNode = terminalNodes[meterTerminal];
-  const fromPos = fromNode.position();
-  const toPos = toNode.position();
+
+  // 🔹 Use absolute position instead of local position()
+  const fromPos = fromNode.getAbsolutePosition();
+  const toPos = toNode.getAbsolutePosition();
 
   const line = new Konva.Line({
     points: [fromPos.x, fromPos.y, toPos.x, toPos.y],
